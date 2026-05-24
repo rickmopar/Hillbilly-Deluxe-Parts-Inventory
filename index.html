@@ -1,1 +1,426 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-title" content="Hillbilly Deluxe" />
+  <title>Hillbilly Deluxe | Mopar Parts Inventory</title>
+  <style>
+    :root {
+      --bg: #0f1115;
+      --panel: #171b22;
+      --panel-2: #202633;
+      --text: #f3f4f6;
+      --muted: #a6adbb;
+      --accent: #d7422f;
+      --accent-2: #f7b733;
+      --green: #46c37b;
+      --blue: #5aa9ff;
+      --border: #2b3240;
+      --shadow: 0 16px 40px rgba(0,0,0,.35);
+      --radius: 18px;
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif;
+      background: radial-gradient(circle at top left, #232838 0, var(--bg) 38%);
+      color: var(--text);
+      padding-bottom: env(safe-area-inset-bottom);
+    }
+
+    .app { display: grid; grid-template-columns: 260px 1fr; min-height: 100vh; }
+
+    aside {
+      background: rgba(12, 14, 19, .92);
+      border-right: 1px solid var(--border);
+      padding: 22px;
+      position: sticky;
+      top: 0;
+      height: 100vh;
+    }
+
+    .brand { display: flex; gap: 12px; align-items: center; margin-bottom: 28px; }
+    .logo {
+      width: 48px; height: 48px; border-radius: 14px;
+      background: linear-gradient(135deg, var(--accent), #741d15);
+      display: grid; place-items: center; font-weight: 900; letter-spacing: -1px; box-shadow: var(--shadow);
+    }
+    .brand h1 { font-size: 16px; line-height: 1.15; margin: 0; }
+    .brand span { color: var(--muted); font-size: 12px; }
+
+    nav a {
+      display: flex; align-items: center; gap: 10px; color: var(--muted); text-decoration: none;
+      padding: 12px 14px; border-radius: 14px; margin: 6px 0; font-weight: 700;
+    }
+    nav a.active, nav a:hover { color: var(--text); background: var(--panel-2); }
+
+    main { padding: 26px; }
+    header { display: flex; justify-content: space-between; align-items: center; gap: 18px; margin-bottom: 22px; }
+    .title h2 { margin: 0 0 6px; font-size: 30px; letter-spacing: -.6px; }
+    .title p { color: var(--muted); margin: 0; }
+    .actions { display: flex; gap: 10px; flex-wrap: wrap; }
+
+    button, .file-button {
+      border: 0; border-radius: 14px; padding: 12px 16px; font-weight: 900;
+      color: var(--text); background: var(--panel-2); cursor: pointer; display: inline-flex;
+      justify-content: center; align-items: center; gap: 8px; text-align: center;
+    }
+    button.primary, .file-button.primary { background: linear-gradient(135deg, var(--accent), #a32e21); }
+    button.green { background: linear-gradient(135deg, #248d55, #17633b); }
+    button:disabled { opacity: .55; cursor: not-allowed; }
+
+    .stats { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 16px; margin-bottom: 18px; }
+    .card { background: rgba(23, 27, 34, .92); border: 1px solid var(--border); border-radius: var(--radius); box-shadow: var(--shadow); padding: 18px; }
+    .stat small { color: var(--muted); font-weight: 800; }
+    .stat strong { display: block; font-size: 30px; margin-top: 8px; }
+
+    .filters { display: grid; grid-template-columns: 1.5fr repeat(4, 1fr); gap: 12px; margin-bottom: 18px; }
+    input, select, textarea {
+      width: 100%; border: 1px solid var(--border); background: #11151c; color: var(--text);
+      border-radius: 14px; padding: 13px 14px; outline: none; font-size: 16px;
+    }
+    textarea { resize: vertical; }
+    label { display: block; color: var(--muted); font-size: 12px; font-weight: 900; text-transform: uppercase; letter-spacing: .07em; margin: 14px 0 6px; }
+
+    .layout { display: grid; grid-template-columns: 1.25fr .9fr; gap: 18px; align-items: start; }
+    table { width: 100%; border-collapse: collapse; }
+    th, td { text-align: left; padding: 14px 10px; border-bottom: 1px solid var(--border); vertical-align: middle; }
+    th { color: var(--muted); font-size: 12px; text-transform: uppercase; letter-spacing: .08em; }
+
+    .part { display: flex; align-items: center; gap: 12px; }
+    .thumb {
+      width: 58px; height: 58px; border-radius: 14px; background: linear-gradient(135deg, #333b4c, #151923);
+      border: 1px solid var(--border); display: grid; place-items: center; color: var(--muted); font-size: 22px; overflow: hidden; flex: 0 0 auto;
+    }
+    .thumb img { width: 100%; height: 100%; object-fit: cover; }
+    .part b { display: block; }
+    .part span, td span.sub { color: var(--muted); font-size: 13px; }
+    .pill { display: inline-flex; padding: 6px 10px; border-radius: 999px; font-size: 12px; font-weight: 900; background: #273040; color: var(--text); }
+    .pill.available { background: rgba(70,195,123,.16); color: #8af0b5; }
+    .pill.research { background: rgba(247,183,51,.15); color: #ffd37b; }
+    .pill.sold { background: rgba(90,169,255,.14); color: #9bcaff; }
+
+    .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+    .photo-preview { border: 2px dashed #3d4658; border-radius: 18px; min-height: 170px; display: grid; place-items: center; text-align: center; color: var(--muted); background: #11151c; overflow: hidden; }
+    .photo-preview img { width: 100%; height: 100%; object-fit: cover; display: block; }
+    input[type="file"] { display: none; }
+    .button-row { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 10px; }
+    .hint { color: var(--muted); font-size: 13px; line-height: 1.4; }
+
+    .catalog-box { border: 1px dashed #465064; border-radius: 16px; padding: 14px; background: #121720; margin-top: 12px; }
+    .catalog-box h4 { margin: 0 0 8px; color: var(--accent-2); }
+    .diagram { aspect-ratio: 4 / 3; background: #0e1218; border: 1px solid var(--border); border-radius: 16px; display: grid; place-items: center; color: var(--muted); text-align: center; padding: 20px; margin-top: 12px; }
+
+    .empty { color: var(--muted); padding: 20px 0; }
+
+    @media (max-width: 900px) {
+      .app { grid-template-columns: 1fr; }
+      aside { height: auto; position: relative; padding-bottom: 12px; }
+      nav { display: flex; overflow-x: auto; gap: 6px; }
+      nav a { white-space: nowrap; }
+      header, .layout { grid-template-columns: 1fr; display: grid; }
+      .stats { grid-template-columns: repeat(2, 1fr); }
+      .filters { grid-template-columns: 1fr 1fr; }
+    }
+    @media (max-width: 560px) {
+      main { padding: 16px; }
+      .title h2 { font-size: 26px; }
+      .stats, .filters, .form-grid, .button-row { grid-template-columns: 1fr; }
+      table, thead, tbody, tr, th, td { display: block; }
+      thead { display: none; }
+      tr { border-bottom: 1px solid var(--border); padding: 12px 0; }
+      td { border: 0; padding: 7px 0; }
+      td::before { content: attr(data-label); display: block; color: var(--muted); font-size: 11px; text-transform: uppercase; font-weight: 900; margin-bottom: 3px; }
+    }
+  </style>
+</head>
+<body>
+  <div class="app">
+    <aside>
+      <div class="brand">
+        <div class="logo">HD</div>
+        <div><h1>Hillbilly<br />Deluxe</h1><span>Mopar Parts Inventory</span></div>
+      </div>
+      <nav>
+        <a class="active" href="#dashboard">Dashboard</a>
+        <a href="#add">Add Part</a>
+        <a href="#catalog">Catalog Lookup</a>
+        <a href="#locations">Locations</a>
+        <a href="#photos">Photos</a>
+      </nav>
+    </aside>
+
+    <main>
+      <header>
+        <div class="title">
+          <h2>Hillbilly Deluxe Dashboard</h2>
+          <p>Phone-first Mopar parts inventory with camera, voice notes, catalog lookup, and garage/storage locations.</p>
+        </div>
+        <div class="actions">
+          <button onclick="document.getElementById('photoInput').click()">📷 Take Photo</button>
+          <button class="primary" onclick="document.getElementById('partName').focus()">+ Add Part</button>
+        </div>
+      </header>
+
+      <section class="stats">
+        <div class="card stat"><small>Total Parts</small><strong id="totalParts">0</strong></div>
+        <div class="card stat"><small>Needs ID</small><strong id="needsId">0</strong></div>
+        <div class="card stat"><small>Available</small><strong id="availableParts">0</strong></div>
+        <div class="card stat"><small>Sold</small><strong id="soldParts">0</strong></div>
+      </section>
+
+      <section class="card filters">
+        <input id="searchInput" type="search" placeholder="Search: Valiant horn button, 2427 537, radio knob..." oninput="renderInventory()" />
+        <select id="makeFilter" onchange="renderInventory()"><option>All Makes</option><option>Plymouth</option><option>Dodge</option><option>Chrysler</option><option>Imperial</option><option>Unknown</option></select>
+        <select id="groupFilter" onchange="renderInventory()"><option>All Groups</option><option>Accessories</option><option>Electrical</option><option>Body</option><option>Interior Trim</option><option>Steering</option><option>Unknown</option></select>
+        <select id="locationFilter" onchange="renderInventory()"><option>All Locations</option><option>Garage</option><option>Storage Unit</option></select>
+        <select id="statusFilter" onchange="renderInventory()"><option>All Status</option><option>Available</option><option>Needs ID</option><option>Sold</option></select>
+      </section>
+
+      <section class="layout">
+        <div class="card">
+          <h3>Inventory</h3>
+          <table>
+            <thead><tr><th>Part</th><th>Catalog</th><th>Location</th><th>Status</th></tr></thead>
+            <tbody id="inventoryTable"></tbody>
+          </table>
+          <div id="emptyState" class="empty">No parts yet. Add your first part from your phone using the form.</div>
+        </div>
+
+        <div id="add" class="card">
+          <h3>Quick Add from Phone</h3>
+          <p class="hint">Use this from your iPhone. The camera opens from the app, and the image is saved only inside this inventory record in this prototype — not to Apple Photos.</p>
+
+          <label>Photo</label>
+          <div id="photoPreview" class="photo-preview">Tap “Take Photo” to add a part picture</div>
+          <input id="photoInput" type="file" accept="image/*" capture="environment" onchange="handlePhoto(event)" />
+          <div class="button-row">
+            <label class="file-button primary" for="photoInput">📷 Take Photo</label>
+            <button type="button" onclick="clearPhoto()">Clear Photo</button>
+          </div>
+
+          <label>Part Name / Description</label>
+          <input id="partName" placeholder="Example: Plymouth Valiant horn button steering wheel ornament" />
+
+          <div class="button-row">
+            <button type="button" class="green" id="voiceBtn" onclick="toggleVoice()">🎙️ Start Voice Note</button>
+            <button type="button" onclick="suggestCatalog()">🔎 Suggest Catalog</button>
+          </div>
+
+          <label>Voice Notes / Condition</label>
+          <textarea id="notes" rows="4" placeholder="Speak or type: used condition, chrome pitted, no part number stamped, from garage cabinet A bin 2..."></textarea>
+
+          <div class="form-grid">
+            <div><label>Make</label><select id="make"><option>Unknown</option><option>Plymouth</option><option>Dodge</option><option>Chrysler</option><option>Imperial</option></select></div>
+            <div><label>Status</label><select id="status"><option>Available</option><option>Needs ID</option><option>Sold</option></select></div>
+            <div><label>Catalog Group</label><select id="catalogGroup"><option>Unknown</option><option>Accessories</option><option>Electrical</option><option>Body</option><option>Interior Trim</option><option>Steering</option></select></div>
+            <div><label>Part Number</label><input id="partNumber" placeholder="Unknown or factory number" /></div>
+          </div>
+
+          <label>Primary Location</label>
+          <select id="primaryLocation" onchange="updateLocationFields()"><option>Garage</option><option>Storage Unit</option></select>
+
+          <div id="garageFields" class="form-grid">
+            <div><label>Garage Area</label><select id="garageArea"><option>Cabinet</option><option>Shelf</option><option>Bin</option></select></div>
+            <div><label>Garage Number/Name</label><input id="garageName" placeholder="A, B, 1, 2, Blue Bin" /></div>
+            <div><label>Bin</label><input id="binName" placeholder="Bin 4, Small Parts, Tray 2" /></div>
+          </div>
+
+          <div id="storageFields" class="form-grid" style="display:none;">
+            <div><label>Storage Shelf Number</label><input id="storageShelf" placeholder="Shelf 1, Shelf 2, Shelf 3" /></div>
+          </div>
+
+          <div id="catalog" class="catalog-box">
+            <h4>Catalog Lookup Preview</h4>
+            <p id="catalogSuggestion">Describe a part, then tap “Suggest Catalog.”</p>
+            <div class="diagram">Factory catalog illustration preview will go here later.</div>
+          </div>
+
+          <button class="primary" style="width:100%; margin-top:16px;" onclick="savePart()">Save Inventory Item</button>
+        </div>
+      </section>
+    </main>
+  </div>
+
+  <script>
+    const STORAGE_KEY = 'hillbillyDeluxeInventory.v1';
+    let inventory = JSON.parse(localStorage.getItem(STORAGE_KEY) || '[]');
+    let currentPhoto = '';
+    let recognition = null;
+    let listening = false;
+
+    function saveInventory() {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(inventory));
+    }
+
+    function handlePhoto(event) {
+      const file = event.target.files[0];
+      if (!file) return;
+      const reader = new FileReader();
+      reader.onload = () => {
+        currentPhoto = reader.result;
+        document.getElementById('photoPreview').innerHTML = `<img src="${currentPhoto}" alt="Part photo" />`;
+      };
+      reader.readAsDataURL(file);
+    }
+
+    function clearPhoto() {
+      currentPhoto = '';
+      document.getElementById('photoInput').value = '';
+      document.getElementById('photoPreview').textContent = 'Tap “Take Photo” to add a part picture';
+    }
+
+    function updateLocationFields() {
+      const location = document.getElementById('primaryLocation').value;
+      document.getElementById('garageFields').style.display = location === 'Garage' ? 'grid' : 'none';
+      document.getElementById('storageFields').style.display = location === 'Storage Unit' ? 'grid' : 'none';
+    }
+
+    function buildLocation() {
+      const location = document.getElementById('primaryLocation').value;
+      if (location === 'Garage') {
+        const area = document.getElementById('garageArea').value;
+        const name = document.getElementById('garageName').value.trim();
+        const bin = document.getElementById('binName').value.trim();
+        return `Garage - ${area}${name ? ' ' + name : ''}${bin ? ' / ' + bin : ''}`;
+      }
+      const shelf = document.getElementById('storageShelf').value.trim();
+      return `Storage Unit${shelf ? ' - ' + shelf : ''}`;
+    }
+
+    function suggestCatalog() {
+      const text = `${document.getElementById('partName').value} ${document.getElementById('notes').value}`.toLowerCase();
+      let suggestion = 'No strong match yet. Save as Needs ID or add more description.';
+
+      if (text.includes('horn') || text.includes('steering wheel ornament') || text.includes('horn button')) {
+        suggestion = '<b>Possible Match:</b> Group 8 — Electrical / Horn Controls. Likely terms: horn button, horn ring, steering wheel ornament, horn switch. Needs confirmation: V100, V200, Signet, trim/color, steering wheel style.';
+        document.getElementById('catalogGroup').value = 'Electrical';
+        if (!document.getElementById('status').value || document.getElementById('status').value === 'Available') document.getElementById('status').value = 'Needs ID';
+      } else if (text.includes('radio') || text.includes('knob')) {
+        suggestion = '<b>Possible Match:</b> Group 1 — Accessories / Radio. Needs confirmation by radio model, knob style, faceplate, and car line.';
+        document.getElementById('catalogGroup').value = 'Accessories';
+      } else if (text.includes('trim') || text.includes('moulding') || text.includes('ornament')) {
+        suggestion = '<b>Possible Match:</b> Group 23 — Body / Interior Trim. Needs confirmation by body style and trim color.';
+        document.getElementById('catalogGroup').value = 'Interior Trim';
+      }
+
+      document.getElementById('catalogSuggestion').innerHTML = suggestion;
+    }
+
+    function savePart() {
+      const name = document.getElementById('partName').value.trim();
+      if (!name) {
+        alert('Add a part name or description first.');
+        return;
+      }
+
+      const part = {
+        id: Date.now(),
+        name,
+        notes: document.getElementById('notes').value.trim(),
+        make: document.getElementById('make').value,
+        status: document.getElementById('status').value,
+        catalogGroup: document.getElementById('catalogGroup').value,
+        partNumber: document.getElementById('partNumber').value.trim() || 'Unknown',
+        primaryLocation: document.getElementById('primaryLocation').value,
+        location: buildLocation(),
+        photo: currentPhoto,
+        createdAt: new Date().toISOString()
+      };
+
+      inventory.unshift(part);
+      saveInventory();
+      resetForm();
+      renderInventory();
+    }
+
+    function resetForm() {
+      document.getElementById('partName').value = '';
+      document.getElementById('notes').value = '';
+      document.getElementById('make').value = 'Unknown';
+      document.getElementById('status').value = 'Available';
+      document.getElementById('catalogGroup').value = 'Unknown';
+      document.getElementById('partNumber').value = '';
+      document.getElementById('garageName').value = '';
+      document.getElementById('binName').value = '';
+      document.getElementById('storageShelf').value = '';
+      document.getElementById('catalogSuggestion').textContent = 'Describe a part, then tap “Suggest Catalog.”';
+      clearPhoto();
+    }
+
+    function renderInventory() {
+      const q = document.getElementById('searchInput').value.toLowerCase();
+      const make = document.getElementById('makeFilter').value;
+      const group = document.getElementById('groupFilter').value;
+      const location = document.getElementById('locationFilter').value;
+      const status = document.getElementById('statusFilter').value;
+
+      const filtered = inventory.filter(item => {
+        const haystack = `${item.name} ${item.notes} ${item.partNumber} ${item.location} ${item.make} ${item.catalogGroup}`.toLowerCase();
+        return (!q || haystack.includes(q)) &&
+          (make === 'All Makes' || item.make === make) &&
+          (group === 'All Groups' || item.catalogGroup === group) &&
+          (location === 'All Locations' || item.primaryLocation === location) &&
+          (status === 'All Status' || item.status === status);
+      });
+
+      document.getElementById('inventoryTable').innerHTML = filtered.map(item => `
+        <tr>
+          <td data-label="Part"><div class="part"><div class="thumb">${item.photo ? `<img src="${item.photo}" alt="${escapeHtml(item.name)}" />` : '🔧'}</div><div><b>${escapeHtml(item.name)}</b><span>${escapeHtml(item.notes || 'No notes yet')}</span></div></div></td>
+          <td data-label="Catalog">${escapeHtml(item.partNumber)}<br /><span class="sub">${escapeHtml(item.catalogGroup)}</span></td>
+          <td data-label="Location">${escapeHtml(item.location)}<br /><span class="sub">${new Date(item.createdAt).toLocaleDateString()}</span></td>
+          <td data-label="Status"><span class="pill ${item.status === 'Available' ? 'available' : item.status === 'Sold' ? 'sold' : 'research'}">${escapeHtml(item.status)}</span></td>
+        </tr>
+      `).join('');
+
+      document.getElementById('emptyState').style.display = filtered.length ? 'none' : 'block';
+      document.getElementById('totalParts').textContent = inventory.length;
+      document.getElementById('needsId').textContent = inventory.filter(i => i.status === 'Needs ID').length;
+      document.getElementById('availableParts').textContent = inventory.filter(i => i.status === 'Available').length;
+      document.getElementById('soldParts').textContent = inventory.filter(i => i.status === 'Sold').length;
+    }
+
+    function toggleVoice() {
+      const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+      if (!SpeechRecognition) {
+        alert('Voice dictation is not supported in this browser. On iPhone, regular keyboard dictation still works in the notes field.');
+        return;
+      }
+
+      if (!recognition) {
+        recognition = new SpeechRecognition();
+        recognition.continuous = true;
+        recognition.interimResults = true;
+        recognition.lang = 'en-US';
+        recognition.onresult = (event) => {
+          let transcript = '';
+          for (let i = event.resultIndex; i < event.results.length; i++) transcript += event.results[i][0].transcript;
+          document.getElementById('notes').value = transcript;
+        };
+        recognition.onend = () => {
+          listening = false;
+          document.getElementById('voiceBtn').textContent = '🎙️ Start Voice Note';
+        };
+      }
+
+      if (listening) recognition.stop();
+      else {
+        recognition.start();
+        listening = true;
+        document.getElementById('voiceBtn').textContent = '⏹ Stop Voice Note';
+      }
+    }
+
+    function escapeHtml(str) {
+      return String(str).replace(/[&<>'"]/g, tag => ({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;'}[tag]));
+    }
+
+    renderInventory();
+  </script>
+</body>
+</html>
 
