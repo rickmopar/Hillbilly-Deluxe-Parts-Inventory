@@ -543,7 +543,7 @@ The part will save without the cloud photo for now.`);
 
         let result;
         if (editingId) {
-          result = await db.from('parts').update(payload).eq('id', editingId);
+          result = await db.from('parts').update(payload).eq('id', Number(editingId));
         } else {
           result = await db.from('parts').insert(payload);
         }
@@ -557,6 +557,7 @@ The part will save without the cloud photo for now.`);
         setSyncStatus(editingId ? 'Updated in Supabase. Cloud sync is ON.' : 'Saved to Supabase. Cloud sync is ON.');
         resetForm();
         await loadInventory();
+        window.scrollTo({ top: 0, behavior: 'smooth' });
         return;
       }
 
@@ -624,8 +625,8 @@ The part will save without the cloud photo for now.`);
           <td data-label="Location">${escapeHtml(item.location)}<br /><span class="sub">${new Date(item.createdAt).toLocaleDateString()}</span></td>
           <td data-label="Status"><span class="pill ${item.status === 'Available' ? 'available' : item.status === 'Sold' ? 'sold' : 'research'}">${escapeHtml(item.status)}</span></td>
           <td data-label="Actions">
-            <button type="button" onclick="editPart(${item.id})">Edit</button>
-            <button type="button" onclick="deletePart(${item.id})">Delete</button>
+            <button type="button" onclick="editPart('${item.id}')">Edit</button>
+            <button type="button" onclick="deletePart('${item.id}')">Delete</button>
           </td>
         </tr>
       `).join('');
@@ -669,6 +670,7 @@ The part will save without the cloud photo for now.`);
       document.getElementById('saveButton').textContent = 'Update Inventory Item';
       document.getElementById('cancelEditButton').style.display = 'inline-flex';
       document.getElementById('add').scrollIntoView({ behavior: 'smooth' });
+      setSyncStatus('Editing: ' + (item.name || 'selected part') + '. Make changes, then click Update Inventory Item.');
     }
 
     function cancelEdit() {
@@ -682,7 +684,7 @@ The part will save without the cloud photo for now.`);
 
       if (db) {
         setSyncStatus('Deleting from Supabase...');
-        const { error } = await db.from('parts').delete().eq('id', id);
+        const { error } = await db.from('parts').delete().eq('id', Number(id));
         if (error) {
           setSyncStatus('Supabase delete error: ' + error.message, true);
           alert('Supabase delete error: ' + error.message);
@@ -690,6 +692,7 @@ The part will save without the cloud photo for now.`);
         }
         setSyncStatus('Deleted from Supabase. Cloud sync is ON.');
         await loadInventory();
+        window.scrollTo({ top: 0, behavior: 'smooth' });
         return;
       }
 
