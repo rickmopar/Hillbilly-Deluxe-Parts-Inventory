@@ -273,7 +273,12 @@
               <option>Group 23 - Body / Interior Trim</option>
               <option>Group 24 - Air Conditioning</option>
             </select></div>
-            <div><label>Part Number</label><input id="partNumber" placeholder="Unknown or factory number" /></div>
+            <div>
+              <label>Part Number</label>
+              <input id="partNumber" placeholder="Unknown or factory number" />
+              <input id="partNumberScanInput" type="file" accept="image/*" capture="environment" onchange="scanPartNumber(event)" />
+              <button type="button" class="mobile-only" style="width:100%; margin-top:8px;" onclick="document.getElementById('partNumberScanInput').click()">📷 Scan Part Number</button>
+            </div>
             <div><label>Quantity</label><input id="quantity" type="number" min="1" step="1" value="1" /></div>
           </div>
 
@@ -313,6 +318,7 @@
   </div>
 
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
   <script>
     // IMPORTANT:
     // Replace these two values in GitHub with your real Supabase Project URL and anon/public key.
@@ -329,6 +335,51 @@
     let recognition = null;
     let listening = false;
     let editingId = null;
+
+    function extractBestPartNumber(text) {
+      const cleaned = String(text || '').toUpperCase().replace(/[^A-Z0-9 ]/g, ' ');
+      const matches = cleaned.match(/[A-Z0-9]{5,12}/g) || [];
+
+      const scored = matches
+        .map(value => ({
+          value,
+          score: (/[0-9]/.test(value) ? 2 : 0) + (value.length >= 6 ? 2 : 0) + (value.length >= 7 ? 1 : 0)
+        }))
+        .sort((a, b) => b.score - a.score || b.value.length - a.value.length);
+
+      return scored.length ? scored[0].value : '';
+    }
+
+    async function scanPartNumber(event) {
+      const file = event.target.files[0];
+      if (!file) return;
+
+      setSyncStatus('Scanning part number...');
+
+      try {
+        if (!window.Tesseract) {
+          alert('OCR scanner did not load. Refresh the page with ?v=14 and try again.');
+          return;
+        }
+
+        const result = await Tesseract.recognize(file, 'eng');
+        const text = result && result.data ? result.data.text : '';
+        const partNumber = extractBestPartNumber(text);
+
+        if (partNumber) {
+          document.getElementById('partNumber').value = partNumber;
+          setSyncStatus('Scanned part number: ' + partNumber);
+        } else {
+          setSyncStatus('Could not find a clear part number. You can type it manually.', true);
+          alert('Could not find a clear part number. Try a closer, brighter photo or type it manually.');
+        }
+      } catch (error) {
+        setSyncStatus('Part number scan error: ' + error.message, true);
+        alert('Part number scan error: ' + error.message);
+      } finally {
+        event.target.value = '';
+      }
+    }
 
     function setSyncStatus(message, isError = false) {
       const el = document.getElementById('syncStatus');
@@ -543,9 +594,9 @@ The part will save without the cloud photo for now.`);
 
         let result;
         if (editingId) {
-          result = await db.from('parts').update(payload).eq('id', Number(editingId));
+          result = await db.from('parts').update(payload).eq('id', Number(editingId)).select('id').single();
         } else {
-          result = await db.from('parts').insert(payload);
+          result = await db.from('parts').insert(payload).select('id').single();
         }
 
         if (result.error) {
@@ -555,6 +606,7 @@ The part will save without the cloud photo for now.`);
         }
 
         setSyncStatus(editingId ? 'Updated in Supabase. Cloud sync is ON.' : 'Saved to Supabase. Cloud sync is ON.');
+        alert(editingId ? 'Inventory item updated.' : 'Inventory item saved.');
         resetForm();
         await loadInventory();
         window.scrollTo({ top: 0, behavior: 'smooth' });
@@ -642,7 +694,7 @@ The part will save without the cloud photo for now.`);
       const item = inventory.find(part => String(part.id) === String(id));
       if (!item) return;
 
-      editingId = item.id;
+      editingId = Number(item.id);
       document.getElementById('partName').value = item.name || '';
       document.getElementById('notes').value = item.notes || '';
       document.getElementById('make').value = item.make || 'Unknown';
