@@ -182,7 +182,31 @@
       <section class="card filters">
         <input id="searchInput" type="search" placeholder="Search: Valiant horn button, 2427 537, radio knob..." oninput="renderInventory()" />
         <select id="makeFilter" onchange="renderInventory()"><option>All Makes</option><option>Plymouth</option><option>Dodge</option><option>Chrysler</option><option>Imperial</option><option>Unknown</option></select>
-        <select id="groupFilter" onchange="renderInventory()"><option>All Groups</option><option>Accessories</option><option>Electrical</option><option>Body</option><option>Interior Trim</option><option>Steering</option><option>Unknown</option></select>
+        <select id="groupFilter" onchange="renderInventory()">
+          <option>All Groups</option>
+          <option>Group 1 - Accessories</option>
+          <option>Group 2 - Front Suspension</option>
+          <option>Group 3 - Rear Axle</option>
+          <option>Group 5 - Brakes</option>
+          <option>Group 6 - Clutch</option>
+          <option>Group 7 - Cooling</option>
+          <option>Group 8 - Electrical</option>
+          <option>Group 9 - Engine</option>
+          <option>Group 10 - Engine Oiling</option>
+          <option>Group 11 - Exhaust</option>
+          <option>Group 13 - Frame</option>
+          <option>Group 14 - Fuel</option>
+          <option>Group 15 - Propeller Shaft</option>
+          <option>Group 16 - Springs</option>
+          <option>Group 17 - Hood</option>
+          <option>Group 18 - Standard Parts</option>
+          <option>Group 19 - Steering</option>
+          <option>Group 21 - Transmission</option>
+          <option>Group 22 - Wheels</option>
+          <option>Group 23 - Body / Interior Trim</option>
+          <option>Group 24 - Air Conditioning</option>
+          <option>Unknown</option>
+        </select>
         <select id="locationFilter" onchange="renderInventory()"><option>All Locations</option><option>Garage</option><option>Storage Unit</option></select>
         <select id="statusFilter" onchange="renderInventory()"><option>All Status</option><option>Available</option><option>Needs ID</option><option>Sold</option></select>
       </section>
@@ -191,7 +215,7 @@
         <div class="card">
           <h3>Inventory</h3>
           <table>
-            <thead><tr><th>Part</th><th>Catalog</th><th>Location</th><th>Status</th></tr></thead>
+            <thead><tr><th>Part</th><th>Qty</th><th>Catalog</th><th>Location</th><th>Status</th></tr></thead>
             <tbody id="inventoryTable"></tbody>
           </table>
           <div id="emptyState" class="empty">No parts yet. Add your first part from your phone using the form.</div>
@@ -225,17 +249,48 @@
           <div class="form-grid">
             <div><label>Make</label><select id="make"><option>Unknown</option><option>Plymouth</option><option>Dodge</option><option>Chrysler</option><option>Imperial</option></select></div>
             <div><label>Status</label><select id="status"><option>Available</option><option>Needs ID</option><option>Sold</option></select></div>
-            <div><label>Catalog Group</label><select id="catalogGroup"><option>Unknown</option><option>Accessories</option><option>Electrical</option><option>Body</option><option>Interior Trim</option><option>Steering</option></select></div>
+            <div><label>Catalog Group</label><select id="catalogGroup">
+              <option>Unknown</option>
+              <option>Group 1 - Accessories</option>
+              <option>Group 2 - Front Suspension</option>
+              <option>Group 3 - Rear Axle</option>
+              <option>Group 5 - Brakes</option>
+              <option>Group 6 - Clutch</option>
+              <option>Group 7 - Cooling</option>
+              <option>Group 8 - Electrical</option>
+              <option>Group 9 - Engine</option>
+              <option>Group 10 - Engine Oiling</option>
+              <option>Group 11 - Exhaust</option>
+              <option>Group 13 - Frame</option>
+              <option>Group 14 - Fuel</option>
+              <option>Group 15 - Propeller Shaft</option>
+              <option>Group 16 - Springs</option>
+              <option>Group 17 - Hood</option>
+              <option>Group 18 - Standard Parts</option>
+              <option>Group 19 - Steering</option>
+              <option>Group 21 - Transmission</option>
+              <option>Group 22 - Wheels</option>
+              <option>Group 23 - Body / Interior Trim</option>
+              <option>Group 24 - Air Conditioning</option>
+            </select></div>
             <div><label>Part Number</label><input id="partNumber" placeholder="Unknown or factory number" /></div>
+            <div><label>Quantity</label><input id="quantity" type="number" min="1" step="1" value="1" /></div>
           </div>
 
           <label>Primary Location</label>
           <select id="primaryLocation" onchange="updateLocationFields()"><option>Garage</option><option>Storage Unit</option></select>
 
           <div id="garageFields" class="form-grid">
-            <div><label>Garage Area</label><select id="garageArea"><option>Cabinet</option><option>Shelf</option><option>Bin</option></select></div>
-            <div><label>Garage Number/Name</label><input id="garageName" placeholder="A, B, 1, 2, Blue Bin" /></div>
-            <div><label>Bin</label><input id="binName" placeholder="Bin 4, Small Parts, Tray 2" /></div>
+            <div><label>Garage Area</label><select id="garageArea" onchange="updateLocationFields()"><option>Cabinet Area</option><option>Large Shelf Area</option></select></div>
+            <div id="cabinetField"><label>Cabinet</label><select id="garageCabinet"><option>Cabinet A</option><option>Cabinet B</option><option>Cabinet C</option><option>Cabinet D</option></select></div>
+            <div id="cabinetShelfField"><label>Cabinet Shelf</label><select id="cabinetShelf"><option>Shelf 1</option><option>Shelf 2</option><option>Shelf 3</option><option>Shelf 4</option></select></div>
+            <div id="cabinetBinField"><label>Bin</label><select id="cabinetBin">
+              <option>Bin 1</option><option>Bin 2</option><option>Bin 3</option><option>Bin 4</option><option>Bin 5</option>
+              <option>Bin 6</option><option>Bin 7</option><option>Bin 8</option><option>Bin 9</option><option>Bin 10</option>
+              <option>Bin 11</option><option>Bin 12</option><option>Bin 13</option><option>Bin 14</option><option>Bin 15</option>
+              <option>Bin 16</option><option>Bin 17</option><option>Bin 18</option><option>Bin 19</option><option>Bin 20</option>
+            </select></div>
+            <div id="largeShelfField" style="display:none;"><label>Large Shelf</label><select id="largeShelf"><option>Shelf A</option><option>Shelf B</option><option>Shelf C</option></select></div>
           </div>
 
           <div id="storageFields" class="form-grid" style="display:none;">
@@ -258,8 +313,8 @@
   <script>
     // IMPORTANT:
     // Replace these two values in GitHub with your real Supabase Project URL and anon/public key.
-    const SUPABASE_URL = 'https://dlhvjyxglgabkacnpmmq.supabase.co';
-    const SUPABASE_PUBLISHABLE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRsaHZqeXhnbGdhYmthY25wbW1xIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzk1NzE5OTUsImV4cCI6MjA5NTE0Nzk5NX0.3wGjfwuyAzv6uI8wyA4rVcxhvg8HzWtH6ybqRuQ4Je8';
+    const SUPABASE_URL = 'PASTE_YOUR_SUPABASE_API_URL_HERE';
+    const SUPABASE_PUBLISHABLE_KEY = 'PASTE_YOUR_SUPABASE_PUBLISHABLE_KEY_HERE';
 
     const STORAGE_KEY = 'hillbillyDeluxeInventory.v1';
     const supabaseReady = SUPABASE_URL.startsWith('https://') && SUPABASE_PUBLISHABLE_KEY.length > 20;
@@ -309,7 +364,14 @@
         status: row.status || 'Available',
         catalogGroup: row.catalog_group || 'Unknown',
         partNumber: row.part_number || 'Unknown',
+        quantity: row.quantity || 1,
         primaryLocation: row.primary_location || '',
+        garageArea: row.garage_area || '',
+        garageCabinet: row.garage_cabinet || '',
+        cabinetShelf: row.cabinet_shelf || '',
+        cabinetBin: row.cabinet_bin || '',
+        largeShelf: row.large_shelf || '',
+        storageShelf: row.storage_shelf || '',
         location: row.location || '',
         photo: row.photo_url || '',
         createdAt: row.created_at || new Date().toISOString()
@@ -347,22 +409,42 @@
 
     function updateLocationFields() {
       const location = document.getElementById('primaryLocation').value;
-      document.getElementById('garageFields').style.display = location === 'Garage' ? 'grid' : 'none';
+      const garageArea = document.getElementById('garageArea')?.value || 'Cabinet Area';
+      const isGarage = location === 'Garage';
+      const isCabinetArea = garageArea === 'Cabinet Area';
+
+      document.getElementById('garageFields').style.display = isGarage ? 'grid' : 'none';
       document.getElementById('storageFields').style.display = location === 'Storage Unit' ? 'grid' : 'none';
+
+      document.getElementById('cabinetField').style.display = isGarage && isCabinetArea ? 'block' : 'none';
+      document.getElementById('cabinetShelfField').style.display = isGarage && isCabinetArea ? 'block' : 'none';
+      document.getElementById('cabinetBinField').style.display = isGarage && isCabinetArea ? 'block' : 'none';
+      document.getElementById('largeShelfField').style.display = isGarage && !isCabinetArea ? 'block' : 'none';
+    }
+
+    function getLocationParts() {
+      const primaryLocation = document.getElementById('primaryLocation').value;
+      const garageArea = document.getElementById('garageArea')?.value || '';
+      const garageCabinet = document.getElementById('garageCabinet')?.value || '';
+      const cabinetShelf = document.getElementById('cabinetShelf')?.value || '';
+      const cabinetBin = document.getElementById('cabinetBin')?.value || '';
+      const largeShelf = document.getElementById('largeShelf')?.value || '';
+      const storageShelf = document.getElementById('storageShelf')?.value.trim() || '';
+
+      return { primaryLocation, garageArea, garageCabinet, cabinetShelf, cabinetBin, largeShelf, storageShelf };
     }
 
     function buildLocation() {
-      const location = document.getElementById('primaryLocation').value;
+      const parts = getLocationParts();
 
-      if (location === 'Garage') {
-        const area = document.getElementById('garageArea').value;
-        const name = document.getElementById('garageName').value.trim();
-        const bin = document.getElementById('binName').value.trim();
-        return `Garage - ${area}${name ? ' ' + name : ''}${bin ? ' / ' + bin : ''}`;
+      if (parts.primaryLocation === 'Garage') {
+        if (parts.garageArea === 'Cabinet Area') {
+          return `Garage - ${parts.garageCabinet} / ${parts.cabinetShelf} / ${parts.cabinetBin}`;
+        }
+        return `Garage - Large Shelf Area / ${parts.largeShelf}`;
       }
 
-      const shelf = document.getElementById('storageShelf').value.trim();
-      return `Storage Unit${shelf ? ' - ' + shelf : ''}`;
+      return `Storage Unit${parts.storageShelf ? ' - ' + parts.storageShelf : ''}`;
     }
 
     function suggestCatalog() {
@@ -370,17 +452,17 @@
       let suggestion = 'No strong match yet. Save as Needs ID or add more description.';
 
       if (text.includes('horn') || text.includes('steering wheel ornament') || text.includes('horn button')) {
-        suggestion = '<b>Possible Match:</b> Group 8 — Electrical / Horn Controls. Likely terms: horn button, horn ring, steering wheel ornament, horn switch. Needs confirmation: V100, V200, Signet, trim/color, steering wheel style.';
-        document.getElementById('catalogGroup').value = 'Electrical';
+        suggestion = '<b>Possible Match:</b> Group 8 - Electrical / Horn Controls. Likely terms: horn button, horn ring, steering wheel ornament, horn switch. Needs confirmation: V100, V200, Signet, trim/color, steering wheel style.';
+        document.getElementById('catalogGroup').value = 'Group 8 - Electrical';
         if (document.getElementById('status').value === 'Available') {
           document.getElementById('status').value = 'Needs ID';
         }
       } else if (text.includes('radio') || text.includes('knob')) {
-        suggestion = '<b>Possible Match:</b> Group 1 — Accessories / Radio. Needs confirmation by radio model, knob style, faceplate, and car line.';
-        document.getElementById('catalogGroup').value = 'Accessories';
+        suggestion = '<b>Possible Match:</b> Group 1 - Accessories / Radio. Needs confirmation by radio model, knob style, faceplate, and car line.';
+        document.getElementById('catalogGroup').value = 'Group 1 - Accessories';
       } else if (text.includes('trim') || text.includes('moulding') || text.includes('ornament')) {
-        suggestion = '<b>Possible Match:</b> Group 23 — Body / Interior Trim. Needs confirmation by body style and trim color.';
-        document.getElementById('catalogGroup').value = 'Interior Trim';
+        suggestion = '<b>Possible Match:</b> Group 23 - Body / Interior Trim. Needs confirmation by body style and trim color.';
+        document.getElementById('catalogGroup').value = 'Group 23 - Body / Interior Trim';
       }
 
       document.getElementById('catalogSuggestion').innerHTML = suggestion;
@@ -414,6 +496,9 @@ The part will save without the cloud photo for now.`);
         return;
       }
 
+      const locationParts = getLocationParts();
+      const quantity = Math.max(1, parseInt(document.getElementById('quantity').value || '1', 10));
+
       const part = {
         id: Date.now(),
         name,
@@ -422,7 +507,8 @@ The part will save without the cloud photo for now.`);
         status: document.getElementById('status').value,
         catalogGroup: document.getElementById('catalogGroup').value,
         partNumber: document.getElementById('partNumber').value.trim() || 'Unknown',
-        primaryLocation: document.getElementById('primaryLocation').value,
+        quantity,
+        ...locationParts,
         location: buildLocation(),
         photo: '',
         createdAt: new Date().toISOString()
@@ -439,7 +525,14 @@ The part will save without the cloud photo for now.`);
           status: part.status,
           catalog_group: part.catalogGroup,
           part_number: part.partNumber,
+          quantity: part.quantity,
           primary_location: part.primaryLocation,
+          garage_area: part.garageArea,
+          garage_cabinet: part.garageCabinet,
+          cabinet_shelf: part.cabinetShelf,
+          cabinet_bin: part.cabinetBin,
+          large_shelf: part.largeShelf,
+          storage_shelf: part.storageShelf,
           location: part.location,
           photo_url: part.photo
         });
@@ -470,11 +563,17 @@ The part will save without the cloud photo for now.`);
       document.getElementById('status').value = 'Available';
       document.getElementById('catalogGroup').value = 'Unknown';
       document.getElementById('partNumber').value = '';
-      document.getElementById('garageName').value = '';
-      document.getElementById('binName').value = '';
+      document.getElementById('quantity').value = '1';
+      document.getElementById('primaryLocation').value = 'Garage';
+      document.getElementById('garageArea').value = 'Cabinet Area';
+      document.getElementById('garageCabinet').value = 'Cabinet A';
+      document.getElementById('cabinetShelf').value = 'Shelf 1';
+      document.getElementById('cabinetBin').value = 'Bin 1';
+      document.getElementById('largeShelf').value = 'Shelf A';
       document.getElementById('storageShelf').value = '';
       document.getElementById('catalogSuggestion').textContent = 'Describe a part, then tap “Suggest Catalog.”';
       clearPhoto();
+      updateLocationFields();
     }
 
     function renderInventory() {
@@ -485,7 +584,7 @@ The part will save without the cloud photo for now.`);
       const status = document.getElementById('statusFilter').value;
 
       const filtered = inventory.filter(item => {
-        const haystack = `${item.name} ${item.notes} ${item.partNumber} ${item.location} ${item.make} ${item.catalogGroup}`.toLowerCase();
+        const haystack = `${item.name} ${item.notes} ${item.partNumber} ${item.location} ${item.make} ${item.catalogGroup} ${item.quantity}`.toLowerCase();
 
         return (!q || haystack.includes(q)) &&
           (make === 'All Makes' || item.make === make) &&
@@ -502,6 +601,7 @@ The part will save without the cloud photo for now.`);
               <div><b>${escapeHtml(item.name)}</b><span>${escapeHtml(item.notes || 'No notes yet')}</span></div>
             </div>
           </td>
+          <td data-label="Qty">${escapeHtml(item.quantity || 1)}</td>
           <td data-label="Catalog">${escapeHtml(item.partNumber)}<br /><span class="sub">${escapeHtml(item.catalogGroup)}</span></td>
           <td data-label="Location">${escapeHtml(item.location)}<br /><span class="sub">${new Date(item.createdAt).toLocaleDateString()}</span></td>
           <td data-label="Status"><span class="pill ${item.status === 'Available' ? 'available' : item.status === 'Sold' ? 'sold' : 'research'}">${escapeHtml(item.status)}</span></td>
@@ -509,10 +609,10 @@ The part will save without the cloud photo for now.`);
       `).join('');
 
       document.getElementById('emptyState').style.display = filtered.length ? 'none' : 'block';
-      document.getElementById('totalParts').textContent = inventory.length;
-      document.getElementById('needsId').textContent = inventory.filter(i => i.status === 'Needs ID').length;
-      document.getElementById('availableParts').textContent = inventory.filter(i => i.status === 'Available').length;
-      document.getElementById('soldParts').textContent = inventory.filter(i => i.status === 'Sold').length;
+      document.getElementById('totalParts').textContent = inventory.reduce((sum, item) => sum + Number(item.quantity || 1), 0);
+      document.getElementById('needsId').textContent = inventory.filter(i => i.status === 'Needs ID').reduce((sum, item) => sum + Number(item.quantity || 1), 0);
+      document.getElementById('availableParts').textContent = inventory.filter(i => i.status === 'Available').reduce((sum, item) => sum + Number(item.quantity || 1), 0);
+      document.getElementById('soldParts').textContent = inventory.filter(i => i.status === 'Sold').reduce((sum, item) => sum + Number(item.quantity || 1), 0);
     }
 
     function toggleVoice() {
@@ -562,6 +662,7 @@ The part will save without the cloud photo for now.`);
       }[tag]));
     }
 
+    updateLocationFields();
     loadInventory();
   </script>
 </body>
