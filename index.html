@@ -259,7 +259,7 @@
     const SUPABASE_URL = 'sb_publishable_3lEgt-hrA9-gf_YpV-usUw_UXQ8mzp9';
     const SUPABASE_PUBLISHABLE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRsaHZqeXhnbGdhYmthY25wbW1xIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzk1NzE5OTUsImV4cCI6MjA5NTE0Nzk5NX0.3wGjfwuyAzv6uI8wyA4rVcxhvg8HzWtH6ybqRuQ4Je8';
 
-    const supabaseReady = SUPABASE_URL.startsWith('https://') && SUPABASE_PUBLISHABLE_KEY.startsWith('sb_publishable_');
+    const supabaseReady = SUPABASE_URL.startsWith('https://') && SUPABASE_PUBLISHABLE_KEY.length > 20;
     const db = supabaseReady ? supabase.createClient(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY) : null;
     const STORAGE_KEY = 'hillbillyDeluxeInventory.v1';
 
