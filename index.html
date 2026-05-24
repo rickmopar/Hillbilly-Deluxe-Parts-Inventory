@@ -72,6 +72,7 @@
     button.primary, .file-button.primary { background: linear-gradient(135deg, var(--accent), #a32e21); }
     button.green { background: linear-gradient(135deg, #248d55, #17633b); }
     button:disabled { opacity: .55; cursor: not-allowed; }
+    .mobile-only { display: inline-flex; }
 
     .stats { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 16px; margin-bottom: 18px; }
     .card { background: rgba(23, 27, 34, .92); border: 1px solid var(--border); border-radius: var(--radius); box-shadow: var(--shadow); padding: 18px; }
@@ -117,6 +118,10 @@
 
     .empty { color: var(--muted); padding: 20px 0; }
 
+    @media (min-width: 901px) {
+      .mobile-only, .mobile-photo-section { display: none; }
+    }
+
     @media (max-width: 900px) {
       .app { grid-template-columns: 1fr; }
       aside { height: auto; position: relative; padding-bottom: 12px; }
@@ -161,7 +166,7 @@
           <p>Phone-first Mopar parts inventory with camera, voice notes, catalog lookup, and garage/storage locations.</p>
         </div>
         <div class="actions">
-          <button onclick="document.getElementById('photoInput').click()">📷 Take Photo</button>
+          <button class="mobile-only" onclick="document.getElementById('photoInput').click()">📷 Take Photo</button>
           <button class="primary" onclick="document.getElementById('partName').focus()">+ Add Part</button>
         </div>
       </header>
@@ -193,14 +198,16 @@
 
         <div id="add" class="card">
           <h3>Quick Add from Phone</h3>
-          <p class="hint">Use this from your iPhone. The camera opens from the app, and the image is saved only inside this inventory record in this prototype — not to Apple Photos.</p>
+          <p class="hint">Use this from your iPhone for photos and voice notes. On the computer, you can still add parts manually without using the camera.</p>
 
-          <label>Photo</label>
-          <div id="photoPreview" class="photo-preview">Tap “Take Photo” to add a part picture</div>
-          <input id="photoInput" type="file" accept="image/*" capture="environment" onchange="handlePhoto(event)" />
-          <div class="button-row">
-            <label class="file-button primary" for="photoInput">📷 Take Photo</label>
-            <button type="button" onclick="clearPhoto()">Clear Photo</button>
+          <div class="mobile-photo-section">
+            <label>Photo</label>
+            <div id="photoPreview" class="photo-preview">Tap “Take Photo” to add a part picture</div>
+            <input id="photoInput" type="file" accept="image/*" capture="environment" onchange="handlePhoto(event)" />
+            <div class="button-row">
+              <label class="file-button primary" for="photoInput">📷 Take Photo</label>
+              <button type="button" onclick="clearPhoto()">Clear Photo</button>
+            </div>
           </div>
 
           <label>Part Name / Description</label>
@@ -423,4 +430,3 @@
   </script>
 </body>
 </html>
-
