@@ -253,20 +253,63 @@
     </main>
   </div>
 
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script>
+    // STEP 1: Replace these two values with your Supabase API URL and Publishable Key.
+    const SUPABASE_URL = 'PASTE_YOUR_SUPABASE_API_URL_HERE';
+    const SUPABASE_PUBLISHABLE_KEY = 'PASTE_YOUR_SUPABASE_PUBLISHABLE_KEY_HERE';
+
+    const supabaseReady = SUPABASE_URL.startsWith('https://') && SUPABASE_PUBLISHABLE_KEY.startsWith('sb_publishable_');
+    const db = supabaseReady ? supabase.createClient(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY) : null;
     const STORAGE_KEY = 'hillbillyDeluxeInventory.v1';
-    let inventory = JSON.parse(localStorage.getItem(STORAGE_KEY) || '[]');
+
+    let inventory = [];
     let currentPhoto = '';
+    let currentPhotoFile = null;
     let recognition = null;
     let listening = false;
 
-    function saveInventory() {
+    async function loadInventory() {
+      if (!db) {
+        inventory = JSON.parse(localStorage.getItem(STORAGE_KEY) || '[]');
+        renderInventory();
+        return;
+      }
+
+      const { data, error } = await db
+        .from('parts')
+        .select('*')
+        .order('created_at', { ascending: false });
+
+      if (error) {
+        alert('Supabase load error: ' + error.message);
+        inventory = JSON.parse(localStorage.getItem(STORAGE_KEY) || '[]');
+      } else {
+        inventory = data.map(row => ({
+          id: row.id,
+          name: row.name || '',
+          notes: row.notes || '',
+          make: row.make || 'Unknown',
+          status: row.status || 'Available',
+          catalogGroup: row.catalog_group || 'Unknown',
+          partNumber: row.part_number || 'Unknown',
+          primaryLocation: row.primary_location || '',
+          location: row.location || '',
+          photo: row.photo_url || '',
+          createdAt: row.created_at
+        }));
+      }
+      renderInventory();
+    }
+
+    function saveLocalFallback() {
       localStorage.setItem(STORAGE_KEY, JSON.stringify(inventory));
     }
 
     function handlePhoto(event) {
       const file = event.target.files[0];
       if (!file) return;
+      currentPhotoFile = file;
       const reader = new FileReader();
       reader.onload = () => {
         currentPhoto = reader.result;
@@ -277,6 +320,7 @@
 
     function clearPhoto() {
       currentPhoto = '';
+      currentPhotoFile = null;
       document.getElementById('photoInput').value = '';
       document.getElementById('photoPreview').textContent = 'Tap “Take Photo” to add a part picture';
     }
@@ -318,13 +362,34 @@
       document.getElementById('catalogSuggestion').innerHTML = suggestion;
     }
 
-    function savePart() {
+    async function uploadPhotoIfNeeded() {
+      if (!db || !currentPhotoFile) return currentPhoto || '';
+
+      const cleanName = currentPhotoFile.name.replace(/[^a-zA-Z0-9.\-_]/g, '-');
+      const filePath = `${Date.now()}-${cleanName}`;
+
+      const { error } = await db.storage
+        .from('part-photos')
+        .upload(filePath, currentPhotoFile, { upsert: false });
+
+      if (error) {
+        alert(`Photo upload error: ${error.message}
+The part will save without the cloud photo for now.`);
+        return '';
+      }
+
+      const { data } = db.storage.from('part-photos').getPublicUrl(filePath);
+      return data.publicUrl;
+    }
+
+    async function savePart() {
       const name = document.getElementById('partName').value.trim();
       if (!name) {
         alert('Add a part name or description first.');
         return;
       }
 
+      const photoUrl = await uploadPhotoIfNeeded();
       const part = {
         id: Date.now(),
         name,
@@ -335,12 +400,35 @@
         partNumber: document.getElementById('partNumber').value.trim() || 'Unknown',
         primaryLocation: document.getElementById('primaryLocation').value,
         location: buildLocation(),
-        photo: currentPhoto,
+        photo: photoUrl,
         createdAt: new Date().toISOString()
       };
 
+      if (db) {
+        const { error } = await db.from('parts').insert({
+          name: part.name,
+          notes: part.notes,
+          make: part.make,
+          status: part.status,
+          catalog_group: part.catalogGroup,
+          part_number: part.partNumber,
+          primary_location: part.primaryLocation,
+          location: part.location,
+          photo_url: part.photo
+        });
+
+        if (error) {
+          alert('Supabase save error: ' + error.message);
+          return;
+        }
+
+        resetForm();
+        await loadInventory();
+        return;
+      }
+
       inventory.unshift(part);
-      saveInventory();
+      saveLocalFallback();
       resetForm();
       renderInventory();
     }
@@ -426,7 +514,7 @@
       return String(str).replace(/[&<>'"]/g, tag => ({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;'}[tag]));
     }
 
-    renderInventory();
+    loadInventory();
   </script>
 </body>
 </html>
