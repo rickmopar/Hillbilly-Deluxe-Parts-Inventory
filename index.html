@@ -164,6 +164,7 @@
         <div class="title">
           <h2>Hillbilly Deluxe Dashboard</h2>
           <p>Phone-first Mopar parts inventory with camera, voice notes, catalog lookup, and garage/storage locations.</p>
+          <p id="syncStatus" class="hint">Checking Supabase connection...</p>
         </div>
         <div class="actions">
           <button class="mobile-only" onclick="document.getElementById('photoInput').click()">📷 Take Photo</button>
@@ -256,11 +257,18 @@
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script>
     // STEP 1: Replace these two values with your Supabase API URL and Publishable Key.
-    const SUPABASE_URL = 'sb_publishable_3lEgt-hrA9-gf_YpV-usUw_UXQ8mzp9';
-    const SUPABASE_PUBLISHABLE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRsaHZqeXhnbGdhYmthY25wbW1xIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzk1NzE5OTUsImV4cCI6MjA5NTE0Nzk5NX0.3wGjfwuyAzv6uI8wyA4rVcxhvg8HzWtH6ybqRuQ4Je8';
+    const SUPABASE_URL = 'PASTE_YOUR_SUPABASE_API_URL_HERE';
+    const SUPABASE_PUBLISHABLE_KEY = 'PASTE_YOUR_SUPABASE_PUBLISHABLE_KEY_HERE';
 
-    const supabaseReady = SUPABASE_URL.startsWith('https://') && SUPABASE_PUBLISHABLE_KEY.length > 20;
+    const supabaseReady = SUPABASE_URL.startsWith('https://') && SUPABASE_PUBLISHABLE_KEY.startsWith('sb_publishable_');
     const db = supabaseReady ? supabase.createClient(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY) : null;
+
+    function setSyncStatus(message, isError = false) {
+      const el = document.getElementById('syncStatus');
+      if (!el) return;
+      el.textContent = message;
+      el.style.color = isError ? '#ff9b9b' : '#8af0b5';
+    }
     const STORAGE_KEY = 'hillbillyDeluxeInventory.v1';
 
     let inventory = [];
@@ -271,10 +279,13 @@
 
     async function loadInventory() {
       if (!db) {
+        setSyncStatus('Supabase is NOT connected. Check the URL and API key in GitHub index.html.', true);
         inventory = JSON.parse(localStorage.getItem(STORAGE_KEY) || '[]');
         renderInventory();
         return;
       }
+
+      setSyncStatus('Connecting to Supabase...');
 
       const { data, error } = await db
         .from('parts')
@@ -282,6 +293,7 @@
         .order('created_at', { ascending: false });
 
       if (error) {
+        setSyncStatus('Supabase load error: ' + error.message, true);
         alert('Supabase load error: ' + error.message);
         inventory = JSON.parse(localStorage.getItem(STORAGE_KEY) || '[]');
       } else {
@@ -298,6 +310,8 @@
           photo: row.photo_url || '',
           createdAt: row.created_at
         }));
+      } else {
+        setSyncStatus('Supabase connected. Cloud sync is ON.');
       }
       renderInventory();
     }
@@ -405,6 +419,7 @@ The part will save without the cloud photo for now.`);
       };
 
       if (db) {
+        setSyncStatus('Saving to Supabase...');
         const { error } = await db.from('parts').insert({
           name: part.name,
           notes: part.notes,
@@ -418,9 +433,12 @@ The part will save without the cloud photo for now.`);
         });
 
         if (error) {
+          setSyncStatus('Supabase save error: ' + error.message, true);
           alert('Supabase save error: ' + error.message);
           return;
         }
+
+        setSyncStatus('Saved to Supabase. Cloud sync is ON.');
 
         resetForm();
         await loadInventory();
