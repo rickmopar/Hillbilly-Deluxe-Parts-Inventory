@@ -215,7 +215,7 @@
         <div class="card">
           <h3>Inventory</h3>
           <table>
-            <thead><tr><th>Part</th><th>Qty</th><th>Catalog</th><th>Location</th><th>Status</th></tr></thead>
+            <thead><tr><th>Part</th><th>Qty</th><th>Catalog</th><th>Location</th><th>Status</th><th>Actions</th></tr></thead>
             <tbody id="inventoryTable"></tbody>
           </table>
           <div id="emptyState" class="empty">No parts yet. Add your first part from your phone using the form.</div>
@@ -303,7 +303,10 @@
             <div class="diagram">Factory catalog illustration preview will go here later.</div>
           </div>
 
-          <button class="primary" style="width:100%; margin-top:16px;" onclick="savePart()">Save Inventory Item</button>
+          <div class="button-row">
+            <button id="saveButton" class="primary" style="width:100%; margin-top:16px;" onclick="savePart()">Save Inventory Item</button>
+            <button id="cancelEditButton" type="button" style="width:100%; margin-top:16px; display:none;" onclick="cancelEdit()">Cancel Edit</button>
+          </div>
         </div>
       </section>
     </main>
@@ -325,6 +328,7 @@
     let currentPhotoFile = null;
     let recognition = null;
     let listening = false;
+    let editingId = null;
 
     function setSyncStatus(message, isError = false) {
       const el = document.getElementById('syncStatus');
@@ -515,10 +519,10 @@ The part will save without the cloud photo for now.`);
       };
 
       if (db) {
-        setSyncStatus('Saving to Supabase...');
+        setSyncStatus(editingId ? 'Updating Supabase...' : 'Saving to Supabase...');
         part.photo = await uploadPhotoIfNeeded();
 
-        const { error } = await db.from('parts').insert({
+        const payload = {
           name: part.name,
           notes: part.notes,
           make: part.make,
@@ -535,28 +539,42 @@ The part will save without the cloud photo for now.`);
           storage_shelf: part.storageShelf,
           location: part.location,
           photo_url: part.photo
-        });
+        };
 
-        if (error) {
-          setSyncStatus('Supabase save error: ' + error.message, true);
-          alert('Supabase save error: ' + error.message);
+        let result;
+        if (editingId) {
+          result = await db.from('parts').update(payload).eq('id', editingId);
+        } else {
+          result = await db.from('parts').insert(payload);
+        }
+
+        if (result.error) {
+          setSyncStatus('Supabase save error: ' + result.error.message, true);
+          alert('Supabase save error: ' + result.error.message);
           return;
         }
 
-        setSyncStatus('Saved to Supabase. Cloud sync is ON.');
+        setSyncStatus(editingId ? 'Updated in Supabase. Cloud sync is ON.' : 'Saved to Supabase. Cloud sync is ON.');
         resetForm();
         await loadInventory();
         return;
       }
 
       part.photo = currentPhoto;
-      inventory.unshift(part);
+      if (editingId) {
+        inventory = inventory.map(item => item.id === editingId ? { ...part, id: editingId } : item);
+      } else {
+        inventory.unshift(part);
+      }
       saveLocalFallback();
       resetForm();
       renderInventory();
     }
 
     function resetForm() {
+      editingId = null;
+      document.getElementById('saveButton').textContent = 'Save Inventory Item';
+      document.getElementById('cancelEditButton').style.display = 'none';
       document.getElementById('partName').value = '';
       document.getElementById('notes').value = '';
       document.getElementById('make').value = 'Unknown';
@@ -605,6 +623,10 @@ The part will save without the cloud photo for now.`);
           <td data-label="Catalog">${escapeHtml(item.partNumber)}<br /><span class="sub">${escapeHtml(item.catalogGroup)}</span></td>
           <td data-label="Location">${escapeHtml(item.location)}<br /><span class="sub">${new Date(item.createdAt).toLocaleDateString()}</span></td>
           <td data-label="Status"><span class="pill ${item.status === 'Available' ? 'available' : item.status === 'Sold' ? 'sold' : 'research'}">${escapeHtml(item.status)}</span></td>
+          <td data-label="Actions">
+            <button type="button" onclick="editPart(${item.id})">Edit</button>
+            <button type="button" onclick="deletePart(${item.id})">Delete</button>
+          </td>
         </tr>
       `).join('');
 
@@ -613,6 +635,67 @@ The part will save without the cloud photo for now.`);
       document.getElementById('needsId').textContent = inventory.filter(i => i.status === 'Needs ID').reduce((sum, item) => sum + Number(item.quantity || 1), 0);
       document.getElementById('availableParts').textContent = inventory.filter(i => i.status === 'Available').reduce((sum, item) => sum + Number(item.quantity || 1), 0);
       document.getElementById('soldParts').textContent = inventory.filter(i => i.status === 'Sold').reduce((sum, item) => sum + Number(item.quantity || 1), 0);
+    }
+
+    function editPart(id) {
+      const item = inventory.find(part => String(part.id) === String(id));
+      if (!item) return;
+
+      editingId = item.id;
+      document.getElementById('partName').value = item.name || '';
+      document.getElementById('notes').value = item.notes || '';
+      document.getElementById('make').value = item.make || 'Unknown';
+      document.getElementById('status').value = item.status || 'Available';
+      document.getElementById('catalogGroup').value = item.catalogGroup || 'Unknown';
+      document.getElementById('partNumber').value = item.partNumber || '';
+      document.getElementById('quantity').value = item.quantity || 1;
+      document.getElementById('primaryLocation').value = item.primaryLocation || 'Garage';
+      document.getElementById('garageArea').value = item.garageArea || 'Cabinet Area';
+      document.getElementById('garageCabinet').value = item.garageCabinet || 'Cabinet A';
+      document.getElementById('cabinetShelf').value = item.cabinetShelf || 'Shelf 1';
+      document.getElementById('cabinetBin').value = item.cabinetBin || 'Bin 1';
+      document.getElementById('largeShelf').value = item.largeShelf || 'Shelf A';
+      document.getElementById('storageShelf').value = item.storageShelf || '';
+      currentPhoto = item.photo || '';
+      currentPhotoFile = null;
+
+      if (currentPhoto) {
+        document.getElementById('photoPreview').innerHTML = `<img src="${currentPhoto}" alt="Part photo" />`;
+      } else {
+        document.getElementById('photoPreview').textContent = 'Tap “Take Photo” to add a part picture';
+      }
+
+      updateLocationFields();
+      document.getElementById('saveButton').textContent = 'Update Inventory Item';
+      document.getElementById('cancelEditButton').style.display = 'inline-flex';
+      document.getElementById('add').scrollIntoView({ behavior: 'smooth' });
+    }
+
+    function cancelEdit() {
+      resetForm();
+    }
+
+    async function deletePart(id) {
+      const item = inventory.find(part => String(part.id) === String(id));
+      const label = item ? item.name : 'this part';
+      if (!confirm(`Delete ${label}? This cannot be undone.`)) return;
+
+      if (db) {
+        setSyncStatus('Deleting from Supabase...');
+        const { error } = await db.from('parts').delete().eq('id', id);
+        if (error) {
+          setSyncStatus('Supabase delete error: ' + error.message, true);
+          alert('Supabase delete error: ' + error.message);
+          return;
+        }
+        setSyncStatus('Deleted from Supabase. Cloud sync is ON.');
+        await loadInventory();
+        return;
+      }
+
+      inventory = inventory.filter(part => String(part.id) !== String(id));
+      saveLocalFallback();
+      renderInventory();
     }
 
     function toggleVoice() {
