@@ -79,7 +79,7 @@
     .stat small { color: var(--muted); font-weight: 800; }
     .stat strong { display: block; font-size: 30px; margin-top: 8px; }
 
-    .filters { display: grid; grid-template-columns: 1.5fr repeat(4, 1fr); gap: 12px; margin-bottom: 18px; }
+    .filters { display: grid; grid-template-columns: 1.5fr repeat(5, 1fr); gap: 12px; margin-bottom: 18px; }
     input, select, textarea {
       width: 100%; border: 1px solid var(--border); background: #11151c; color: var(--text);
       border-radius: 14px; padding: 13px 14px; outline: none; font-size: 16px;
@@ -209,6 +209,7 @@
         </select>
         <select id="locationFilter" onchange="renderInventory()"><option>All Locations</option><option>Garage</option><option>Storage Unit</option></select>
         <select id="statusFilter" onchange="renderInventory()"><option>All Status</option><option>Available</option><option>Needs ID</option><option>Sold</option></select>
+        <button type="button" onclick="clearFilters()">Clear Filters</button>
       </section>
 
       <section class="layout">
@@ -503,24 +504,61 @@
     }
 
     function suggestCatalog() {
-      const text = `${document.getElementById('partName').value} ${document.getElementById('notes').value}`.toLowerCase();
-      let suggestion = 'No strong match yet. Save as Needs ID or add more description.';
+      const name = document.getElementById('partName').value || '';
+      const notes = document.getElementById('notes').value || '';
+      const group = document.getElementById('catalogGroup').value || 'Unknown';
+      const partNumber = document.getElementById('partNumber').value || '';
+      const status = document.getElementById('status').value || '';
+      const text = `${name} ${notes} ${group} ${partNumber}`.toLowerCase();
+      let suggestions = [];
 
-      if (text.includes('horn') || text.includes('steering wheel ornament') || text.includes('horn button')) {
-        suggestion = '<b>Possible Match:</b> Group 8 - Electrical / Horn Controls. Likely terms: horn button, horn ring, steering wheel ornament, horn switch. Needs confirmation: V100, V200, Signet, trim/color, steering wheel style.';
-        document.getElementById('catalogGroup').value = 'Group 8 - Electrical';
-        if (document.getElementById('status').value === 'Available') {
-          document.getElementById('status').value = 'Needs ID';
-        }
-      } else if (text.includes('radio') || text.includes('knob')) {
-        suggestion = '<b>Possible Match:</b> Group 1 - Accessories / Radio. Needs confirmation by radio model, knob style, faceplate, and car line.';
-        document.getElementById('catalogGroup').value = 'Group 1 - Accessories';
-      } else if (text.includes('trim') || text.includes('moulding') || text.includes('ornament')) {
-        suggestion = '<b>Possible Match:</b> Group 23 - Body / Interior Trim. Needs confirmation by body style and trim color.';
-        document.getElementById('catalogGroup').value = 'Group 23 - Body / Interior Trim';
+      if (partNumber.trim() && partNumber.toLowerCase() !== 'unknown') {
+        suggestions.push(`<b>Part number lookup needed:</b> Search the Mopar numerical index for <b>${escapeHtml(partNumber.trim())}</b>. If found, the catalog should return the Part Type Code, group, and part description.`);
       }
 
-      document.getElementById('catalogSuggestion').innerHTML = suggestion;
+      if (text.includes('horn') || text.includes('steering wheel ornament') || text.includes('horn button')) {
+        suggestions.push('<b>Likely catalog area:</b> Group 8 - Electrical / Horn Controls. Possible terms: horn button, horn ring, steering wheel ornament, horn switch. Needs confirmation by V100, V200, Signet, trim/color, and wheel style.');
+        document.getElementById('catalogGroup').value = 'Group 8 - Electrical';
+      }
+
+      if (text.includes('radio') || text.includes('knob') || text.includes('bezel') || text.includes('faceplate')) {
+        suggestions.push('<b>Likely catalog area:</b> Group 1 - Accessories / Radio. Confirm radio model, knob style, faceplate, and car line.');
+        if (group === 'Unknown') document.getElementById('catalogGroup').value = 'Group 1 - Accessories';
+      }
+
+      if (text.includes('trim') || text.includes('moulding') || text.includes('molding') || text.includes('ornament') || text.includes('emblem') || text.includes('chrome')) {
+        suggestions.push('<b>Likely catalog area:</b> Group 23 - Body / Interior Trim. Confirm body style, side, trim level, and color if applicable.');
+        if (group === 'Unknown') document.getElementById('catalogGroup').value = 'Group 23 - Body / Interior Trim';
+      }
+
+      if (text.includes('wheel') || text.includes('rim') || text.includes('hub cap') || text.includes('hubcap')) {
+        suggestions.push('<b>Likely catalog area:</b> Group 22 - Wheels. Confirm wheel size, cover type, and car line.');
+        if (group === 'Unknown') document.getElementById('catalogGroup').value = 'Group 22 - Wheels';
+      }
+
+      if (text.includes('brake') || text.includes('drum') || text.includes('shoe')) {
+        suggestions.push('<b>Likely catalog area:</b> Group 5 - Brakes. Confirm front/rear, drum size, and manual/power brake application.');
+        if (group === 'Unknown') document.getElementById('catalogGroup').value = 'Group 5 - Brakes';
+      }
+
+      if (status === 'Needs ID' && suggestions.length === 0) {
+        suggestions.push('<b>Needs ID:</b> Add more description, vehicle line, location on car, visible casting/stamped numbers, and whether it is left/right/front/rear. This will improve the PDF catalog match later.');
+      }
+
+      if (suggestions.length === 0) {
+        suggestions.push('No strong match yet. Add more description, select a catalog group, or enter a visible part number.');
+      }
+
+      document.getElementById('catalogSuggestion').innerHTML = suggestions.map(s => `<p>${s}</p>`).join('');
+    }
+
+    function clearFilters() {
+      document.getElementById('searchInput').value = '';
+      document.getElementById('makeFilter').value = 'All Makes';
+      document.getElementById('groupFilter').value = 'All Groups';
+      document.getElementById('locationFilter').value = 'All Locations';
+      document.getElementById('statusFilter').value = 'All Status';
+      renderInventory();
     }
 
     async function uploadPhotoIfNeeded() {
