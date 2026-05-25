@@ -5,6 +5,7 @@
   "type": "module",
   "scripts": {
     "backup:parts": "node scripts/backup-parts.js",
+    "catalog:build": "python3 scripts/build-catalog-index.py",
     "supabase:openapi": "node scripts/export-supabase-openapi.js"
   }
 }

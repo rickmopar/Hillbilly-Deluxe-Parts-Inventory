@@ -538,7 +538,13 @@
       const normalized = normalizePartNumber(partNumber);
       if (!normalized || !window.MOPAR_CATALOG_INDEX) return [];
 
-      return window.MOPAR_CATALOG_INDEX.filter(entry => normalizePartNumber(entry.partNumber) === normalized);
+      return window.MOPAR_CATALOG_INDEX
+        .filter(entry => normalizePartNumber(entry.partNumber) === normalized)
+        .sort((a, b) => {
+          const sourceScore = (b.source === 'group-page' ? 1 : 0) - (a.source === 'group-page' ? 1 : 0);
+          return sourceScore || Number(b.confidence || 0) - Number(a.confidence || 0) || Number(a.pdfPage || 0) - Number(b.pdfPage || 0);
+        })
+        .slice(0, 6);
     }
 
     function formatCatalogMatch(entry) {
@@ -546,7 +552,10 @@
       const groupLabel = entry.group ? `Group ${escapeHtml(entry.group)}${groupName ? ` - ${escapeHtml(groupName)}` : ''}` : 'Group unknown';
       const codeLabel = entry.code ? `Part Type Code ${escapeHtml(entry.code)}` : 'Part Type Code unknown';
       const pageLabel = entry.pdfPage ? `PDF page ${escapeHtml(entry.pdfPage)}` : 'PDF page unknown';
-      return `<b>Catalog match:</b> ${escapeHtml(entry.partNumber)} - ${groupLabel}; ${codeLabel}; ${pageLabel}.`;
+      const sourceLabel = entry.source === 'group-page' ? 'catalog page' : 'numerical index';
+      const confidenceLabel = entry.confidence ? `; ${Math.round(Number(entry.confidence) * 100)}% confidence` : '';
+      const description = entry.description ? `<br /><span class="sub">${escapeHtml(entry.description)}</span>` : '';
+      return `<b>Catalog match:</b> ${escapeHtml(entry.partNumber)} - ${groupLabel}; ${codeLabel}; ${pageLabel}; ${sourceLabel}${confidenceLabel}.${description}`;
     }
 
     function normalizeWords(value) {

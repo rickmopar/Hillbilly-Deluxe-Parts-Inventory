@@ -9,6 +9,14 @@ Phone-first Mopar parts inventory backed by GitHub Pages and Supabase.
 - `supabase/schema.sql` - baseline schema and next-phase table plan
 - `scripts/` - local Supabase admin helpers
 
+## Build Catalog Index
+
+```bash
+python3 scripts/build-catalog-index.py "/path/to/64_Mopar_Parts_Catalog5.pdf" --output catalog-index.js
+```
+
+The builder scans embedded PDF text, tracks Mopar Part Type Codes, and emits browser-ready lookup records.
+
 ## Local Supabase Admin Setup
 
 Create `.env.local` locally. Do not commit it.

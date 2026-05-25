@@ -2,6 +2,7 @@
 .env.*
 !.env.example
 node_modules/
+__pycache__/
 backups/
 qa-screenshot.png
 .DS_Store
