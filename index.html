@@ -558,6 +558,84 @@
       return `<b>Catalog match:</b> ${escapeHtml(entry.partNumber)} - ${groupLabel}; ${codeLabel}; ${pageLabel}; ${sourceLabel}${confidenceLabel}.${description}`;
     }
 
+    function expandCatalogSearchText(value) {
+      const terms = normalizeWords(value).flatMap(word => {
+        const synonyms = {
+          headlight: ['headlamp'],
+          headlamp: ['headlight'],
+          bezel: ['door', 'rim', 'ring', 'moulding', 'molding'],
+          trim: ['moulding', 'molding', 'finish'],
+          ring: ['rim', 'door', 'bezel'],
+          rim: ['ring', 'bezel'],
+          parking: ['park'],
+          signal: ['turn'],
+          backup: ['back-up']
+        };
+        return [word, ...(synonyms[word] || [])];
+      });
+
+      return [...new Set(terms)];
+    }
+
+    function scoreCatalogDescription(entry, queryTerms, selectedGroup) {
+      const haystack = `${entry.description || ''} ${entry.groupName || ''} ${entry.code || ''}`.toLowerCase();
+      const queryText = queryTerms.join(' ');
+      const wantsHeadlamp = /headlight|headlamp/.test(queryText);
+      const wantsBezel = /bezel|ring|rim|door/.test(queryText);
+      const wantsTrim = /trim|moulding|molding/.test(queryText);
+      const hasHeadlamp = /headlamp|head lamp/.test(haystack);
+      const hasLamp = /\blamp\b/.test(haystack);
+      let score = 0;
+
+      queryTerms.forEach(term => {
+        if (haystack.includes(term)) score += term.length > 4 ? 3 : 2;
+      });
+
+      if (wantsHeadlamp) {
+        if (hasHeadlamp) score += 18;
+        else if (hasLamp) score += 2;
+        else score -= 10;
+
+        if (String(entry.group) === '8') score += 6;
+        if (String(entry.code || '').startsWith('8-33')) score += 8;
+        if (!/backup|back-up|back up/.test(queryText) && /back-?\s*up|tail|stop|parking|park|license/.test(haystack)) score -= 14;
+      }
+
+      if (wantsBezel && /door|bezel|ring|rim/.test(haystack)) score += 8;
+      if (wantsTrim && /moulding|molding|trim|finish|door|bezel/.test(haystack)) score += 4;
+      if (entry.source === 'group-page') score += 3;
+      if (entry.code) score += 2;
+      if (selectedGroup !== 'Unknown' && entry.groupName && selectedGroup.includes(entry.groupName)) score += 6;
+
+      return score;
+    }
+
+    function findCatalogDescriptionMatches(text, selectedGroup) {
+      if (!window.MOPAR_CATALOG_INDEX) return [];
+
+      const queryTerms = expandCatalogSearchText(text);
+      if (!queryTerms.length) return [];
+
+      const seen = new Set();
+      return window.MOPAR_CATALOG_INDEX
+        .map(entry => ({ entry, score: scoreCatalogDescription(entry, queryTerms, selectedGroup) }))
+        .filter(result => result.score >= 12 && result.entry.description)
+        .sort((a, b) => b.score - a.score || Number(b.entry.confidence || 0) - Number(a.entry.confidence || 0) || Number(a.entry.pdfPage || 0) - Number(b.entry.pdfPage || 0))
+        .filter(result => {
+          const key = `${result.entry.partNumber}-${result.entry.code}`;
+          if (seen.has(key)) return false;
+          seen.add(key);
+          return true;
+        })
+        .slice(0, 8)
+        .map(result => ({ ...result.entry, matchScore: result.score }));
+    }
+
+    function formatDescriptionMatch(entry) {
+      const scoreLabel = entry.matchScore ? `; search score ${entry.matchScore}` : '';
+      return `${formatCatalogMatch(entry)}${scoreLabel}`;
+    }
+
     function normalizeWords(value) {
       return String(value || '')
         .toLowerCase()
@@ -794,29 +872,40 @@
         }
       }
 
-      if (text.includes('horn') || text.includes('steering wheel ornament') || text.includes('horn button')) {
-        suggestions.push('<b>Likely catalog area:</b> Group 8 - Electrical / Horn Controls. Possible terms: horn button, horn ring, steering wheel ornament, horn switch. Needs confirmation by V100, V200, Signet, trim/color, and wheel style.');
-        document.getElementById('catalogGroup').value = 'Group 8 - Electrical';
+      const descriptionMatches = findCatalogDescriptionMatches(`${name} ${notes}`, group);
+      if (descriptionMatches.length) {
+        suggestions.push(`<b>Description lookup:</b> Possible factory part numbers for “${escapeHtml(name || notes)}”.`);
+        suggestions.push(...descriptionMatches.slice(0, 5).map(formatDescriptionMatch));
+        const firstGroup = descriptionMatches[0].group;
+        const groupName = window.MOPAR_GROUP_NAMES && window.MOPAR_GROUP_NAMES[firstGroup];
+        if (group === 'Unknown' && firstGroup && groupName) document.getElementById('catalogGroup').value = `Group ${firstGroup} - ${groupName}`;
       }
 
-      if (text.includes('radio') || text.includes('knob') || text.includes('bezel') || text.includes('faceplate')) {
-        suggestions.push('<b>Likely catalog area:</b> Group 1 - Accessories / Radio. Confirm radio model, knob style, faceplate, and car line.');
-        if (group === 'Unknown') document.getElementById('catalogGroup').value = 'Group 1 - Accessories';
-      }
+      if (!descriptionMatches.length) {
+        if (text.includes('horn') || text.includes('steering wheel ornament') || text.includes('horn button')) {
+          suggestions.push('<b>Likely catalog area:</b> Group 8 - Electrical / Horn Controls. Possible terms: horn button, horn ring, steering wheel ornament, horn switch. Needs confirmation by V100, V200, Signet, trim/color, and wheel style.');
+          document.getElementById('catalogGroup').value = 'Group 8 - Electrical';
+        }
 
-      if (text.includes('trim') || text.includes('moulding') || text.includes('molding') || text.includes('ornament') || text.includes('emblem') || text.includes('chrome')) {
-        suggestions.push('<b>Likely catalog area:</b> Group 23 - Body / Interior Trim. Confirm body style, side, trim level, and color if applicable.');
-        if (group === 'Unknown') document.getElementById('catalogGroup').value = 'Group 23 - Body / Interior Trim';
-      }
+        if (text.includes('radio') || text.includes('knob') || text.includes('bezel') || text.includes('faceplate')) {
+          suggestions.push('<b>Likely catalog area:</b> Group 1 - Accessories / Radio. Confirm radio model, knob style, faceplate, and car line.');
+          if (group === 'Unknown') document.getElementById('catalogGroup').value = 'Group 1 - Accessories';
+        }
 
-      if (text.includes('wheel') || text.includes('rim') || text.includes('hub cap') || text.includes('hubcap')) {
-        suggestions.push('<b>Likely catalog area:</b> Group 22 - Wheels. Confirm wheel size, cover type, and car line.');
-        if (group === 'Unknown') document.getElementById('catalogGroup').value = 'Group 22 - Wheels';
-      }
+        if (text.includes('trim') || text.includes('moulding') || text.includes('molding') || text.includes('ornament') || text.includes('emblem') || text.includes('chrome')) {
+          suggestions.push('<b>Likely catalog area:</b> Group 23 - Body / Interior Trim. Confirm body style, side, trim level, and color if applicable.');
+          if (group === 'Unknown') document.getElementById('catalogGroup').value = 'Group 23 - Body / Interior Trim';
+        }
 
-      if (text.includes('brake') || text.includes('drum') || text.includes('shoe')) {
-        suggestions.push('<b>Likely catalog area:</b> Group 5 - Brakes. Confirm front/rear, drum size, and manual/power brake application.');
-        if (group === 'Unknown') document.getElementById('catalogGroup').value = 'Group 5 - Brakes';
+        if (text.includes('wheel') || text.includes('rim') || text.includes('hub cap') || text.includes('hubcap')) {
+          suggestions.push('<b>Likely catalog area:</b> Group 22 - Wheels. Confirm wheel size, cover type, and car line.');
+          if (group === 'Unknown') document.getElementById('catalogGroup').value = 'Group 22 - Wheels';
+        }
+
+        if (text.includes('brake') || text.includes('drum') || text.includes('shoe')) {
+          suggestions.push('<b>Likely catalog area:</b> Group 5 - Brakes. Confirm front/rear, drum size, and manual/power brake application.');
+          if (group === 'Unknown') document.getElementById('catalogGroup').value = 'Group 5 - Brakes';
+        }
       }
 
       if (status === 'Needs ID' && suggestions.length === 0) {
