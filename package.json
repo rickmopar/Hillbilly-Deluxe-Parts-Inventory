@@ -1,0 +1,10 @@
+{
+  "name": "hillbilly-deluxe-parts-inventory",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "backup:parts": "node scripts/backup-parts.js",
+    "supabase:openapi": "node scripts/export-supabase-openapi.js"
+  }
+}

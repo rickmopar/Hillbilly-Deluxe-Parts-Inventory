@@ -74,7 +74,7 @@
     button:disabled { opacity: .55; cursor: not-allowed; }
     .mobile-only { display: inline-flex; }
 
-    .stats { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 16px; margin-bottom: 18px; }
+    .stats { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 16px; margin-bottom: 18px; }
     .card { background: rgba(23, 27, 34, .92); border: 1px solid var(--border); border-radius: var(--radius); box-shadow: var(--shadow); padding: 18px; }
     .stat small { color: var(--muted); font-weight: 800; }
     .stat strong { display: block; font-size: 30px; margin-top: 8px; }
@@ -115,6 +115,15 @@
     .catalog-box { border: 1px dashed #465064; border-radius: 16px; padding: 14px; background: #121720; margin-top: 12px; }
     .catalog-box h4 { margin: 0 0 8px; color: var(--accent-2); }
     .diagram { aspect-ratio: 4 / 3; background: #0e1218; border: 1px solid var(--border); border-radius: 16px; display: grid; place-items: center; color: var(--muted); text-align: center; padding: 20px; margin-top: 12px; }
+    .review-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 18px; margin-bottom: 18px; }
+    .review-list { display: grid; gap: 12px; }
+    .review-item { border: 1px solid var(--border); border-radius: 14px; background: #121720; padding: 14px; }
+    .review-item h4 { margin: 0 0 6px; font-size: 16px; }
+    .review-item p { margin: 6px 0; color: var(--muted); line-height: 1.4; }
+    .review-meta { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 10px; }
+    .mini-actions { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 12px; }
+    .mini-actions button { padding: 9px 11px; border-radius: 11px; font-size: 13px; }
+    .score { color: #8af0b5; font-weight: 900; }
 
     .empty { color: var(--muted); padding: 20px 0; }
 
@@ -130,6 +139,7 @@
       header, .layout { grid-template-columns: 1fr; display: grid; }
       .stats { grid-template-columns: repeat(2, 1fr); }
       .filters { grid-template-columns: 1fr 1fr; }
+      .review-grid { grid-template-columns: 1fr; }
     }
     @media (max-width: 560px) {
       main { padding: 16px; }
@@ -152,6 +162,7 @@
       </div>
       <nav>
         <a class="active" href="#dashboard">Dashboard</a>
+        <a href="#needsIdQueue">Needs ID</a>
         <a href="#add">Add Part</a>
         <a href="#catalog">Catalog Lookup</a>
         <a href="#locations">Locations</a>
@@ -175,6 +186,7 @@
       <section class="stats">
         <div class="card stat"><small>Total Parts</small><strong id="totalParts">0</strong></div>
         <div class="card stat"><small>Needs ID</small><strong id="needsId">0</strong></div>
+        <div class="card stat"><small>Duplicate Leads</small><strong id="duplicateLeads">0</strong></div>
         <div class="card stat"><small>Available</small><strong id="availableParts">0</strong></div>
         <div class="card stat"><small>Sold</small><strong id="soldParts">0</strong></div>
       </section>
@@ -210,6 +222,20 @@
         <select id="locationFilter" onchange="renderInventory()"><option>All Locations</option><option>Garage</option><option>Storage Unit</option></select>
         <select id="statusFilter" onchange="renderInventory()"><option>All Status</option><option>Available</option><option>Needs ID</option><option>Sold</option></select>
         <button type="button" onclick="clearFilters()">Clear Filters</button>
+      </section>
+
+      <section class="review-grid">
+        <div id="needsIdQueue" class="card">
+          <h3>Needs ID Queue</h3>
+          <div id="needsIdList" class="review-list"></div>
+          <div id="needsIdEmpty" class="empty">No Needs ID parts right now.</div>
+        </div>
+
+        <div id="duplicateReview" class="card">
+          <h3>Duplicate & Fitment Leads</h3>
+          <div id="duplicateList" class="review-list"></div>
+          <div id="duplicateEmpty" class="empty">No duplicate leads found yet.</div>
+        </div>
       </section>
 
       <section class="layout">
@@ -320,6 +346,7 @@
 
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
+  <script src="catalog-index.js"></script>
   <script>
     // IMPORTANT:
     // Replace these two values in GitHub with your real Supabase Project URL and anon/public key.
@@ -503,6 +530,240 @@
       return `Storage Unit${parts.storageShelf ? ' - ' + parts.storageShelf : ''}`;
     }
 
+    function normalizePartNumber(value) {
+      return String(value || '').toUpperCase().replace(/[^A-Z0-9]/g, '');
+    }
+
+    function findCatalogMatches(partNumber) {
+      const normalized = normalizePartNumber(partNumber);
+      if (!normalized || !window.MOPAR_CATALOG_INDEX) return [];
+
+      return window.MOPAR_CATALOG_INDEX.filter(entry => normalizePartNumber(entry.partNumber) === normalized);
+    }
+
+    function formatCatalogMatch(entry) {
+      const groupName = window.MOPAR_GROUP_NAMES && entry.group ? window.MOPAR_GROUP_NAMES[entry.group] : '';
+      const groupLabel = entry.group ? `Group ${escapeHtml(entry.group)}${groupName ? ` - ${escapeHtml(groupName)}` : ''}` : 'Group unknown';
+      const codeLabel = entry.code ? `Part Type Code ${escapeHtml(entry.code)}` : 'Part Type Code unknown';
+      const pageLabel = entry.pdfPage ? `PDF page ${escapeHtml(entry.pdfPage)}` : 'PDF page unknown';
+      return `<b>Catalog match:</b> ${escapeHtml(entry.partNumber)} - ${groupLabel}; ${codeLabel}; ${pageLabel}.`;
+    }
+
+    function normalizeWords(value) {
+      return String(value || '')
+        .toLowerCase()
+        .replace(/[^a-z0-9 ]/g, ' ')
+        .split(/\s+/)
+        .filter(word => word.length > 2 && !['the', 'and', 'for', 'with', 'unknown'].includes(word));
+    }
+
+    function getItemText(item) {
+      return `${item.name || ''} ${item.notes || ''} ${item.make || ''} ${item.catalogGroup || ''} ${item.partNumber || ''}`;
+    }
+
+    function hasKnownPartNumber(item) {
+      const value = normalizePartNumber(item.partNumber);
+      return value && value !== 'UNKNOWN' && value.length >= 5;
+    }
+
+    function getCatalogGroupNumber(item) {
+      const match = String(item.catalogGroup || '').match(/Group\s+(\d+)/i);
+      return match ? match[1] : '';
+    }
+
+    function getMissingIdentityFields(item) {
+      const missing = [];
+      const text = getItemText(item).toLowerCase();
+
+      if (!hasKnownPartNumber(item)) missing.push('part number');
+      if (!item.catalogGroup || item.catalogGroup === 'Unknown') missing.push('catalog group');
+      if (!item.make || item.make === 'Unknown') missing.push('make');
+      if (!/(valiant|barracuda|dart|polara|fury|belvedere|satellite|charger|coronet|imperial|chrysler|dodge|plymouth)/.test(text)) missing.push('vehicle line');
+      if (!/(left|right|front|rear|upper|lower|inner|outer|driver|passenger)/.test(text)) missing.push('position');
+
+      return missing;
+    }
+
+    function getFitmentSuggestions(item) {
+      const text = getItemText(item).toLowerCase();
+      const groupNumber = getCatalogGroupNumber(item);
+      const suggestions = [];
+      const catalogMatches = hasKnownPartNumber(item) ? findCatalogMatches(item.partNumber) : [];
+
+      catalogMatches.forEach(match => {
+        const groupName = window.MOPAR_GROUP_NAMES && match.group ? window.MOPAR_GROUP_NAMES[match.group] : 'catalog group';
+        suggestions.push(`Catalog hit: ${match.partNumber}, Group ${match.group} - ${groupName}, code ${match.code || 'unknown'}, PDF page ${match.pdfPage || 'unknown'}.`);
+      });
+
+      if (/valiant|v100|v200|signet/.test(text)) suggestions.push('Likely Plymouth Valiant line; confirm year, body style, trim level, and left/right position.');
+      if (/barracuda/.test(text)) suggestions.push('Likely Plymouth Barracuda; confirm shared Valiant application versus Barracuda-only trim.');
+      if (/dart|gt|270/.test(text)) suggestions.push('Likely Dodge Dart line; confirm series and body style before merging with Valiant parts.');
+      if (/fury|belvedere|satellite|savoy/.test(text)) suggestions.push('Likely Plymouth B-body/full-size application; confirm wheelbase and trim.');
+      if (/coronet|charger|polara/.test(text)) suggestions.push('Likely Dodge B-body/full-size application; confirm model and year range.');
+      if (/horn|steering wheel ornament|horn button/.test(text) || groupNumber === '8') suggestions.push('Electrical/horn-control fitment usually depends on steering wheel style, trim color, and series.');
+      if (/radio|radio knob|faceplate/.test(text) || (groupNumber === '1' && /radio|knob|faceplate|accessory/.test(text))) suggestions.push('Radio/accessory parts need radio model, knob style, and dash/faceplate application.');
+      if (/trim|moulding|molding|ornament|emblem|chrome/.test(text) || groupNumber === '23') suggestions.push('Trim fitment should capture body style, side, trim level, and color when applicable.');
+      if (/wheel|rim|hub cap|hubcap/.test(text) || groupNumber === '22') suggestions.push('Wheel and cover fitment should capture diameter, cover style, and car line.');
+      if (/brake|drum|shoe/.test(text) || groupNumber === '5') suggestions.push('Brake fitment should capture front/rear, drum size, and manual/power brakes.');
+
+      return [...new Set(suggestions)].slice(0, 4);
+    }
+
+    function scoreDuplicatePair(a, b) {
+      const aNumber = normalizePartNumber(a.partNumber);
+      const bNumber = normalizePartNumber(b.partNumber);
+      const aWords = new Set(normalizeWords(`${a.name} ${a.notes}`));
+      const bWords = new Set(normalizeWords(`${b.name} ${b.notes}`));
+      const sharedWords = [...aWords].filter(word => bWords.has(word));
+      const allWords = new Set([...aWords, ...bWords]);
+      let score = allWords.size ? Math.round((sharedWords.length / allWords.size) * 55) : 0;
+      const reasons = [];
+
+      if (aNumber && bNumber && aNumber !== 'UNKNOWN' && aNumber === bNumber) {
+        score += 70;
+        reasons.push(`same part number ${a.partNumber}`);
+      }
+
+      if (String(a.name || '').trim().toLowerCase() === String(b.name || '').trim().toLowerCase()) {
+        score += 25;
+        reasons.push('same description');
+      }
+
+      if (a.catalogGroup && a.catalogGroup !== 'Unknown' && a.catalogGroup === b.catalogGroup) {
+        score += 8;
+        reasons.push('same catalog group');
+      }
+
+      if (a.make && a.make !== 'Unknown' && a.make === b.make) {
+        score += 6;
+        reasons.push('same make');
+      }
+
+      if (a.primaryLocation && a.primaryLocation === b.primaryLocation) {
+        score += 4;
+        reasons.push('same primary location');
+      }
+
+      if (sharedWords.length >= 2) reasons.push(`shared terms: ${sharedWords.slice(0, 4).join(', ')}`);
+
+      return { score: Math.min(score, 100), reasons };
+    }
+
+    function getDuplicateLeads() {
+      const leads = [];
+
+      for (let i = 0; i < inventory.length; i++) {
+        for (let j = i + 1; j < inventory.length; j++) {
+          const result = scoreDuplicatePair(inventory[i], inventory[j]);
+          if (result.score >= 55) {
+            leads.push({ first: inventory[i], second: inventory[j], ...result });
+          }
+        }
+      }
+
+      return leads.sort((a, b) => b.score - a.score).slice(0, 8);
+    }
+
+    function setNeedsIdFilter() {
+      document.getElementById('statusFilter').value = 'Needs ID';
+      document.getElementById('searchInput').value = '';
+      renderInventory();
+      document.getElementById('inventoryTable').scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+
+    function renderNeedsIdQueue() {
+      const items = inventory
+        .filter(item => item.status === 'Needs ID' || !hasKnownPartNumber(item) || item.catalogGroup === 'Unknown')
+        .sort((a, b) => {
+          const aMissing = getMissingIdentityFields(a).length;
+          const bMissing = getMissingIdentityFields(b).length;
+          return bMissing - aMissing || new Date(b.createdAt) - new Date(a.createdAt);
+        })
+        .slice(0, 6);
+
+      const list = document.getElementById('needsIdList');
+      const empty = document.getElementById('needsIdEmpty');
+      if (!list || !empty) return;
+
+      list.innerHTML = items.map(item => {
+        const missing = getMissingIdentityFields(item);
+        const fitment = getFitmentSuggestions(item);
+        return `
+          <div class="review-item">
+            <h4>${escapeHtml(item.name || 'Unnamed part')}</h4>
+            <p>${escapeHtml(item.notes || 'No notes yet')}</p>
+            <div class="review-meta">
+              <span class="pill research">${escapeHtml(item.status || 'Needs ID')}</span>
+              <span class="pill">${escapeHtml(item.partNumber || 'Unknown')}</span>
+              <span class="pill">${escapeHtml(item.catalogGroup || 'Unknown')}</span>
+            </div>
+            <p><b>Missing:</b> ${escapeHtml(missing.length ? missing.join(', ') : 'ready for catalog lookup')}</p>
+            ${fitment.length ? `<p><b>Fitment lead:</b> ${escapeHtml(fitment[0])}</p>` : ''}
+            <div class="mini-actions">
+              <button type="button" onclick="editPart('${item.id}')">Review</button>
+              <button type="button" onclick="lookupItemCatalog('${item.id}')">Lookup</button>
+            </div>
+          </div>
+        `;
+      }).join('');
+
+      empty.style.display = items.length ? 'none' : 'block';
+    }
+
+    function renderDuplicateReview() {
+      const duplicateLeads = getDuplicateLeads();
+      const fitmentItems = inventory
+        .map(item => ({ item, fitment: getFitmentSuggestions(item) }))
+        .filter(entry => entry.fitment.length)
+        .slice(0, 3);
+      const list = document.getElementById('duplicateList');
+      const empty = document.getElementById('duplicateEmpty');
+      if (!list || !empty) return;
+
+      const duplicateHtml = duplicateLeads.slice(0, 4).map(lead => `
+        <div class="review-item">
+          <h4>${escapeHtml(lead.first.name)} / ${escapeHtml(lead.second.name)}</h4>
+          <p><span class="score">${lead.score}%</span> duplicate confidence. ${escapeHtml(lead.reasons.join('; ') || 'similar inventory details')}</p>
+          <div class="review-meta">
+            <span class="pill">${escapeHtml(lead.first.partNumber || 'Unknown')}</span>
+            <span class="pill">${escapeHtml(lead.second.partNumber || 'Unknown')}</span>
+          </div>
+          <div class="mini-actions">
+            <button type="button" onclick="editPart('${lead.first.id}')">Open First</button>
+            <button type="button" onclick="editPart('${lead.second.id}')">Open Second</button>
+          </div>
+        </div>
+      `).join('');
+
+      const fitmentHtml = fitmentItems.map(entry => `
+        <div class="review-item">
+          <h4>${escapeHtml(entry.item.name || 'Unnamed part')}</h4>
+          <p><b>Fitment:</b> ${escapeHtml(entry.fitment[0])}</p>
+          ${entry.fitment[1] ? `<p>${escapeHtml(entry.fitment[1])}</p>` : ''}
+          <div class="mini-actions">
+            <button type="button" onclick="lookupItemCatalog('${entry.item.id}')">Lookup</button>
+          </div>
+        </div>
+      `).join('');
+
+      list.innerHTML = `${duplicateHtml}${fitmentHtml}`;
+      empty.style.display = duplicateLeads.length || fitmentItems.length ? 'none' : 'block';
+      document.getElementById('duplicateLeads').textContent = duplicateLeads.length;
+    }
+
+    function lookupItemCatalog(id) {
+      const item = inventory.find(part => String(part.id) === String(id));
+      if (!item) return;
+
+      document.getElementById('partName').value = item.name || '';
+      document.getElementById('notes').value = item.notes || '';
+      document.getElementById('catalogGroup').value = item.catalogGroup || 'Unknown';
+      document.getElementById('partNumber').value = item.partNumber && item.partNumber !== 'Unknown' ? item.partNumber : '';
+      document.getElementById('status').value = item.status || 'Needs ID';
+      suggestCatalog();
+      document.getElementById('catalog').scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+
     function suggestCatalog() {
       const name = document.getElementById('partName').value || '';
       const notes = document.getElementById('notes').value || '';
@@ -513,7 +774,15 @@
       let suggestions = [];
 
       if (partNumber.trim() && partNumber.toLowerCase() !== 'unknown') {
-        suggestions.push(`<b>Part number lookup needed:</b> Search the Mopar numerical index for <b>${escapeHtml(partNumber.trim())}</b>. If found, the catalog should return the Part Type Code, group, and part description.`);
+        const catalogMatches = findCatalogMatches(partNumber);
+        if (catalogMatches.length) {
+          suggestions.push(...catalogMatches.map(formatCatalogMatch));
+          const firstGroup = catalogMatches[0].group;
+          const groupName = window.MOPAR_GROUP_NAMES && window.MOPAR_GROUP_NAMES[firstGroup];
+          if (firstGroup && groupName) document.getElementById('catalogGroup').value = `Group ${firstGroup} - ${groupName}`;
+        } else {
+          suggestions.push(`<b>Part number lookup needed:</b> Search the Mopar numerical index for <b>${escapeHtml(partNumber.trim())}</b>. If found, the catalog should return the Part Type Code, group, and part description.`);
+        }
       }
 
       if (text.includes('horn') || text.includes('steering wheel ornament') || text.includes('horn button')) {
@@ -726,6 +995,8 @@ The part will save without the cloud photo for now.`);
       document.getElementById('needsId').textContent = inventory.filter(i => i.status === 'Needs ID').reduce((sum, item) => sum + Number(item.quantity || 1), 0);
       document.getElementById('availableParts').textContent = inventory.filter(i => i.status === 'Available').reduce((sum, item) => sum + Number(item.quantity || 1), 0);
       document.getElementById('soldParts').textContent = inventory.filter(i => i.status === 'Sold').reduce((sum, item) => sum + Number(item.quantity || 1), 0);
+      renderNeedsIdQueue();
+      renderDuplicateReview();
     }
 
     function editPart(id) {
